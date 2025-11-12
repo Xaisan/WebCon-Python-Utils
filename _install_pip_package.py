@@ -71,12 +71,6 @@ def _is_package_installed(import_name: str) -> bool:
         - Package: "opencv-python" → Import: "cv2"
         - Package: "scikit-learn"  → Import: "sklearn"
         - Package: "beautifulsoup4"→ Import: "bs4"
-    
-    Example Usage:
-        if _is_package_installed("requests"):
-            print("Requests library is available")
-        else:
-            print("Requests library is NOT installed")
     """
     try:
         # __import__ attempts to load the module, raising an exception if unavailable
@@ -124,25 +118,6 @@ def _install_pip_package(package_name: str, import_name: Optional[str] = None,
     Requirements:
         - Requires output_buffer to be defined globally
         - Must be called with output_buffer.flush_to_stderr() on False return
-    
-    Example Usage:
-        # Simple case - import name matches package name
-        if not _install_pip_package("requests"):
-            output_buffer.flush_to_stderr()
-            print("Failed to install requests", file=sys.stderr)
-            sys.exit(1)
-        
-        # Complex case - import name differs from package name
-        if not _install_pip_package("Pillow", import_name="PIL"):
-            output_buffer.flush_to_stderr()
-            print("Failed to install Pillow", file=sys.stderr)
-            sys.exit(1)
-        
-        # With custom timeout for large packages
-        if not _install_pip_package("tensorflow", timeout_sec=600):
-            output_buffer.flush_to_stderr()
-            print("Failed to install tensorflow", file=sys.stderr)
-            sys.exit(1)
     """
     # Default import_name to package_name if not specified
     import_name = import_name or package_name
@@ -235,24 +210,3 @@ def _install_pip_package(package_name: str, import_name: Optional[str] = None,
              f"'{package_name}': {e}", file=sys.stderr)
         traceback.print_exc()
         return False
-
-# INTEGRATION PATTERN FOR YOUR SCRIPT:
-#
-# 1. Define required package at the top of your script:
-#    REQUIRED_PACKAGE = "my-package-name"
-#    IMPORT_NAME = "my_module"  # If different from package name
-#
-# 2. In your main() function, install before importing:
-#    def main():
-#        if not _install_pip_package(REQUIRED_PACKAGE, IMPORT_NAME):
-#            output_buffer.flush_to_stderr()
-#            print(f"FATAL: Could not install {REQUIRED_PACKAGE}", file=sys.stderr)
-#            sys.exit(1)
-#        
-#        # Now safe to import
-#        import my_module
-#        # ... rest of your code
-#
-# 3. For scripts with proxy requirements:
-#    PROXY_URL = os.environ.get("CORPORATE_PROXY", "")  # Read from environment
-#    # Or set directly: PROXY_URL = "http://proxy.company.com:8080"
