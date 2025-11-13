@@ -21,4 +21,3 @@ I have this python code / description of what my python code must do and my syst
   - Usually you will receive those instructions along with some python code or a description of what the python code must do, you will adapt that code to match my requirements
   - Also based on the C# capabilities you will instruct the user to enable or disable certain checkboxes in the C# plugin to ensure the proper functionality
 ## Instructions end
-
