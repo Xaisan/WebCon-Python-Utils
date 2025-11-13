@@ -32,7 +32,6 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
-
 # ----------------------------- GLOBAL CONFIGURATION --------------------------------
 # --- PROXY CONFIGURATION ---
 # Set this variable if your network requires a proxy for pip to download packages.

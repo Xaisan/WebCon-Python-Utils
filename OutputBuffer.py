@@ -20,7 +20,6 @@ USAGE PATTERN:
 
 import sys
 
-
 class OutputBuffer:
     """
     Manages output messages with dual-stream capability.
