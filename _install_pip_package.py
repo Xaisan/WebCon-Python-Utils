@@ -7,13 +7,6 @@ scripts that need to ensure dependencies are available at runtime. They are desi
 for scripts that run as subprocesses or in environments where dependencies may not be
 pre-installed.
 
-KEY FEATURES:
-- Checks if a package is already installed before attempting installation
-- Forces upgrade to latest version to ensure bug fixes and features
-- Supports proxy configuration for corporate/restricted environments
-- Provides detailed diagnostic output for troubleshooting
-- Handles common edge cases (timeouts, import name vs package name differences)
-
 COMMON USE CASE:
 Scripts distributed as single files that need to install their own dependencies
 without requiring manual pip install commands or requirements.txt files.
@@ -55,21 +48,6 @@ def _is_package_installed(import_name: str) -> bool:
     Args:
         import_name (str): The module name used in import statements.
                           Example: "requests", "PIL", "cv2"
-    
-    Returns:
-        bool: True if the package can be imported, False otherwise
-    
-    Key Notes:
-        - Uses __import__ to avoid polluting the namespace
-        - Checks only the top-level module (before the first dot)
-        - Catches all exceptions to handle various import failure scenarios
-        - Does NOT check version numbers, only availability
-    
-    Common Import Name vs Package Name Differences:
-        - Package: "Pillow"        → Import: "PIL"
-        - Package: "opencv-python" → Import: "cv2"
-        - Package: "scikit-learn"  → Import: "sklearn"
-        - Package: "beautifulsoup4"→ Import: "bs4"
     """
     try:
         # __import__ attempts to load the module, raising an exception if unavailable
@@ -100,20 +78,7 @@ def _install_pip_package(package_name: str, import_name: Optional[str] = None,
                                     Defaults to 300 (5 minutes).
     
     Returns:
-        bool: True if installation succeeded and module is importable, False otherwise
-    
-    Behavior:
-        1. Upgrades pip itself to latest version (silently)
-        2. Runs pip install with --upgrade flag
-        3. Respects PROXY_URL global variable if set
-        4. Verifies package is importable after installation
-        5. Provides detailed diagnostic output via output_buffer
-    
-    Error Handling:
-        - On failure, flushes output_buffer to stderr for visibility
-        - Returns False instead of raising exceptions for graceful degradation
-        - Handles timeouts, network errors, and permission issues
-    
+        bool: True if installation succeeded and module is importable, False otherwise    
     Requirements:
         - Requires output_buffer to be defined globally
         - Must be called with output_buffer.flush_to_stderr() on False return
@@ -160,7 +125,8 @@ def _install_pip_package(package_name: str, import_name: Optional[str] = None,
             timeout=timeout_sec,         # Prevent hanging on network issues
             capture_output=True,         # Capture stdout and stderr for analysis
             text=True,                   # Return strings instead of bytes
-            env=env                      # Pass environment with proxy settings
+            env=env,                      # Pass environment with proxy settings
+            stdin=subprocess.DEVNULL
         )
 
         # Step 5: Log the results
