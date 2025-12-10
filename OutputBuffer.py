@@ -18,24 +18,14 @@ USAGE PATTERN:
 4. This ensures all previous STDOUT messages are also written to STDERR
 """
 
-import sys
+import sys, io
 
-class OutputBuffer:
-    """
-    Manages output messages with dual-stream capability.
-    
-    This class buffers all messages printed to STDOUT and can replay them to STDERR
-    when errors occur. This ensures visibility of all diagnostic messages even when
-    the parent process only displays STDERR content.
-    
-    Attributes:
-        messages (list): Internal buffer storing all printed messages
-    
-    Methods:
-        print(message, to_stderr=False): Print and buffer a message
-        flush_to_stderr(): Dump all buffered messages to STDERR
-    """
-    
+if isinstance(sys.stdout, io.TextIOWrapper) and sys.version_info >= (3, 7):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
+if isinstance(sys.stderr, io.TextIOWrapper) and sys.version_info >= (3, 7):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
+
+class OutputBuffer:   
     def __init__(self):
         """Initialize an empty message buffer."""
         self.messages = []
@@ -44,40 +34,25 @@ class OutputBuffer:
         """
         Print a message and store it in the buffer.
         
-        Args:
-            message (str): The message to print and buffer
-            to_stderr (bool): If True, print directly to STDERR instead of STDOUT.
-                            Use this for messages that are already errors.
-        
-        Behavior:
-            - Message is always added to the internal buffer
-            - Message is printed immediately to the specified stream
-            - flush=True ensures immediate output (no buffering delay)
-        
         Example:
             output_buffer.print("[INFO] Starting process...")  # Goes to STDOUT
             output_buffer.print("[WARN] Issue detected", to_stderr=True)  # Goes to STDERR
         """
         msg_str = str(message)
         self.messages.append(msg_str)
-        if to_stderr:
-            print(msg_str, file=sys.stderr, flush=True)
-        else:
-            print(msg_str, flush=True)
+        
+        stream = sys.stderr if to_stderr else sys.stdout
+        try:
+            print(msg_str, file=stream, flush=True)
+        except UnicodeEncodeError:
+            # Fallback: replace un-encodable characters instead of crashing
+            encoding = getattr(stream, "encoding", None) or "utf-8"
+            safe = msg_str.encode(encoding, errors="replace").decode(encoding, errors="replace")
+            print(safe, file=stream, flush=True)
     
     def flush_to_stderr(self):
         """
-        Dump all buffered STDOUT messages to STDERR.
-        
-        Call this method immediately before writing error messages to STDERR.
-        This ensures that all diagnostic messages printed to STDOUT are visible
-        even when the parent process only shows STDERR.
-        
-        Behavior:
-            - Writes a visual separator for clarity
-            - Replays all buffered messages to STDERR
-            - Does nothing if buffer is empty
-        
+        Dump all buffered STDOUT messages to STDERR.      
         When to use:
             - Before sys.exit(1) with error message
             - In except blocks before printing traceback
