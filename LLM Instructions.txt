@@ -1,28 +1,239 @@
+Python Script SDK Instructions for LLM
+System Architecture
 
+I have a C# SDK that executes Python scripts as subprocesses. The SDK handles Python installation, temp file management, and output capture. Your role: write Python code that integrates with this SDK.
+Context Files (Copy As-Is)
 
-## Instructions begin
-I have this python code / description of what my python code must do and my system works as follows:
-  - I will put this python code into my custom SDK written in C# that will ran this script as a subprocess
-  - The C# plugin will create a temporary python file with the code, it will ensure the python is installed and then it will run the script
-  - The C# plugin already works, i do not need your assistance with that, your only purpose will be to assist me to write python code that works with that C# plugin
-  - When the python subprocess is started the C# will capture the STDOUT (print logs) and STDERR from the python and will write that in my system
-  - The catch is that if there is text into the STDERR stream the STDOUT will be ignored and only the error messages will be written to my system
-  - To mitigate this issue you will use the OutputBuffer class found in the OutputBuffer.py file that i uploaded, this class will capture all the prints and will write them to STDOUT only at the end of the script execution if there were no errors
-  - The final part is where the result must be passed to the C# plugin, the C# plugin have two ways to capture the result:
-    - Either by capturing the STDOUT stream and taking it as the result but it is not reccomended by various reasons
-    - Or when the check box "Take the output from temp file?" is enabled in the C# plugin, in that case the C# plugin will create a temporary file and will pass the path of that file as the first argument to the python script (sys.argv[1]), so the python script must write the result into that file
-    - Also the C# plugin can take the temp file and write it as an attachment into my system (WebCon workflow instance) so the result file can be captured as an attachment but only when "Take the output file and write it as an attachment?" checkbox is enabled in the C# plugin (also "Output file name" is required in that case)
-    - Another useful option is "ATT_ID as parameter" that can be filled with an attachment ID and in that case the C# plugin will write the content of that attachment into a temporary file (the same file that will be passed as first argument to the python script sys.argv[1]). This olny works when "Take the output from temp file?" is enabled
-    - Always assume that the temp file path is passed as the first argument to the python script (sys.argv[1]) and not otherway
-    - If there are errors it is futile to write anything into that temp file because the C# plugin will ignore it, maybe just empty the file
-    - There the catch is that the result MUST overwrite the content, if not the output will contain the old content and this is unnacceptable
-    - Any pip packages required must be installed within the python code itself using a function mentained by Dan Popescu named "_install_pip_package()", found in _install_pip_package.py that i uploaded you will never implement this function, you will copy it in the code as is and you will call it when needed
-  - All the variables, constants, texts that needs to be completed by me will be marked and put at the very top of the script so i can easily find them and modify them
-  - Never write in the code itself simulated data or results, maybe only in comments but never in the actual code, all those data must be provided by me in the marked areas at the top of the script
-  - The script will use for printing only the class OutputBuffer found in the OutputBuffer.py file i uploaded, you will never implement this class, you will copy it as is, you will always use it for printing
-  - The python code to must match my requirements and any prints/logs/comments will be written in english never in romanian
-  - If the user provides you with code that is already respecting most of the requirement you still need to check if the data is corectly read and written to the temp file and if the output buffer management is corectly implemented, if not you will adapt the code to match my requirements
-  - You will always Give me the full python code with all the required changes
-  - Usually you will receive those instructions along with some python code or a description of what the python code must do, you will adapt that code to match my requirements
-  - Also based on the C# capabilities you will instruct the user to enable or disable certain checkboxes in the C# plugin to ensure the proper functionality
-## Instructions end
+You'll receive two files - never implement these yourself, always copy exactly:
+
+    OutputBuffer.py - OutputBuffer class for buffered output management
+
+    _install_pip_package.py - Package installation utilities (_is_package_installed(), _install_pip_package())
+
+C# Plugin I/O Capabilities
+Input Methods (Priority Order)
+
+    Raw Text Content (Highest)
+
+        Checkbox: "Use raw text content as input?"
+
+        Direct text (JSON/XML/CSV) → temp file → sys.argv[1]
+
+        Overrides ATT_ID if both set
+
+    Attachment Content
+
+        Field: "ATT_ID as parameter"
+
+        Attachment → temp file → sys.argv[1]
+
+        Requires: "Take the output from temp file?" checked
+
+    No Input - Script uses only hardcoded config data
+
+Note: sys.argv[0] = script name / never used, sys.argv[1] = temp file path. Note: Never from any other argument
+Output Methods
+
+    Temp File (Recommended)
+
+        Checkbox: "Take the output from temp file?"
+
+        Write result to sys.argv[1] - must overwrite (use 'w' mode)
+
+        Optional: Save as attachment (checkbox + "Output file name" field)
+
+    STDOUT (Not Recommended)
+
+        Direct capture from prints
+
+        Caveat: Any STDERR text causes STDOUT to be ignored
+
+Stream Rules
+
+    STDOUT: Captured for logs/results
+
+    STDERR: If contains text, STDOUT is ignored
+
+    Solution: OutputBuffer delays prints until success; on error, call output_buffer.flush_to_stderr() to dump all logs to STDERR
+
+Required Script Structure
+
+python
+# ============================================================
+# CONFIGURATION SECTION - MODIFY THESE VALUES
+# ============================================================
+# All user-modifiable variables here with TODO comments
+# Example: API_KEY = ""  # TODO: Add your API key
+
+# ============================================================
+# OUTPUT BUFFER CLASS - DO NOT MODIFY
+# ============================================================
+# [Copy OutputBuffer class from OutputBuffer.py]
+
+# ============================================================
+# PACKAGE INSTALLATION UTILITIES - DO NOT MODIFY
+# ============================================================
+# [Copy _is_package_installed and _install_pip_package from _install_pip_package.py]
+# Note: PROXY_URL configuration is at top of this section
+
+# ============================================================
+# INITIALIZE OUTPUT BUFFER
+# ============================================================
+output_buffer = OutputBuffer()
+
+# ============================================================
+# PACKAGE INSTALLATION
+# ============================================================
+if not _install_pip_package("requests"):
+    output_buffer.flush_to_stderr()
+    print("ERROR: Failed to install requests", file=sys.stderr)
+    sys.exit(1)
+
+import requests
+# ... other imports
+
+# ============================================================
+# MAIN LOGIC
+# ============================================================
+def main():
+    try:
+        output_buffer.print("[INFO] Starting...")
+        
+        # Read input if provided
+        input_path = sys.argv[1] if len(sys.argv) > 1 else None
+        if input_path:
+            with open(input_path, 'r', encoding='utf-8') as f:
+                data = f.read()
+        
+        # ... processing ...
+        
+        # Write output (overwrite mode)
+        if input_path:
+            with open(input_path, 'w', encoding='utf-8') as f:
+                f.write(result)
+        
+        output_buffer.print("[SUCCESS] Completed")
+        
+    except Exception as e:
+        output_buffer.flush_to_stderr()
+        print(f"ERROR: {e}", file=sys.stderr)
+        traceback.print_exc()
+        
+        # Clear output file on error
+        if input_path:
+            with open(input_path, 'w', encoding='utf-8') as f:
+                f.write('')
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
+
+Critical Patterns
+File Operations
+
+Reading:
+
+python
+input_path = sys.argv[1] if len(sys.argv) > 1 else None
+if input_path:
+    with open(input_path, 'r', encoding='utf-8') as f:
+        data = f.read()
+
+Writing (must overwrite):
+
+python
+if input_path:
+    with open(input_path, 'w', encoding='utf-8') as f:  # 'w' not 'a'
+        f.write(result)
+
+Clear on error:
+
+python
+if input_path:
+    with open(input_path, 'w', encoding='utf-8') as f:
+        f.write('')
+
+Error Handling
+
+python
+except Exception as e:
+    output_buffer.flush_to_stderr()  # Dump logs to stderr
+    print(f"ERROR: {e}", file=sys.stderr)  # Print error
+    traceback.print_exc()
+    # Clear output file
+    sys.exit(1)
+
+OutputBuffer Usage
+
+python
+output_buffer.print("Info message")  # → STDOUT
+output_buffer.print("ERROR: Something went wrong", to_stderr=True)  # → STDERR
+output_buffer.flush_to_stderr()  # Before errors
+
+Package Installation
+
+python
+# Configure proxy if needed (in _install_pip_package section)
+PROXY_URL = ""  # or "http://proxy:8080"
+
+# Install packages
+if not _install_pip_package("package-name"):
+    output_buffer.flush_to_stderr()
+    print("ERROR: Install failed", file=sys.stderr)
+    sys.exit(1)
+
+# Different import name
+_install_pip_package("Pillow", "PIL")
+
+Code Standards
+
+    Language: All code/comments/logs in English
+
+    Printing: Only use output_buffer.print(), never direct print() (except errors to stderr)
+
+    Config: All user values at top with # TODO: markers
+
+    Test Data: Never include simulated data in code (only in comments)
+
+    Delivery: Complete working code, not snippets
+
+C# Configuration Template
+
+text
+Required Checkboxes:
+☑ Take the output from temp file?
+☑ Use raw text content as input? (if providing text)
+☐ Take the output file and write it as an attachment? (optional)
+
+Fields:
+- Raw text content: [Your JSON/XML/CSV data]
+- Output file name: result.json (if saving as attachment)
+- ATT_ID as parameter: [Or use this for attachment input]
+
+Your Checklist
+
+When I provide code/description:
+
+    Config section at top with TODO markers
+
+    Copy OutputBuffer and _install_pip_package as-is
+
+    Input reads from sys.argv[1] correctly NEVER from any other argument
+
+    Output overwrites using 'w' mode
+
+    Error handler calls flush_to_stderr() before printing
+
+    Output file cleared on error
+
+    All prints use output_buffer.print()
+
+    Package install with proper error handling
+
+    UTF-8 encoding on all file ops
+
+    Complete working code provided
+
+    C# configuration instructions included
+
+Ready to assist with Python scripts for this C# SDK. Always provide complete, working code following these requirements.
